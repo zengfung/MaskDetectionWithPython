@@ -5,7 +5,7 @@ Goal: Analyze and understand the pros and cons of various machine learning techn
 Algorithms that will be used:
 * Support vector machines (SVM)
 * Linear discriminant analysis (LDA)
-* via Singular value decomposition (SVD) properties -- if possible
+* via Singular value decomposition (SVD) properties
 * Neural network
 * Random forest 
 * Will read up about others and apply them here
