@@ -14,8 +14,8 @@ import numpy as np
 import pandas as pd
 
 # Variables to play around/edit if necessary
-CONVERTED_IMAGE_SIZE = (200, 200)
-CONVERTED_IMAGE_MODE = 'L' #choose either '1','L', 'P', 'RGB', 'RGBA'
+CONVERTED_IMAGE_SIZE = (256, 256)
+CONVERTED_IMAGE_MODE = 'P' #choose either '1','L', 'P', 'RGB', 'RGBA'
 CONVERTED_IMAGE_TYPE = '.jpg'
 
 with_mask_folder = './with_mask/'
@@ -148,11 +148,5 @@ without_mask_df.insert(0, "with_mask", len(without_mask_df) * ['No'], False)
 full_mask_df = pd.concat([with_mask_df, without_mask_df], axis = 0)
 
 # exporting data frame into csv file
-print('Exporting with_mask_df...')
-with_mask_df.to_csv('with_mask.csv', index = False, header = True)
-
-print('Exporting without_mask_df...')
-without_mask_df.to_csv('without_mask.csv', index = False, header = True)
-
 print('Exporting full_mask_df...')
-full_mask_df.to_csv('full_mask.csv', index = False, header = True)
+full_mask_df.to_csv('mask.csv', index = False, header = True)

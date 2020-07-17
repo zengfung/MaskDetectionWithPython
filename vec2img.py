@@ -16,7 +16,7 @@ df = pd.read_csv('full_mask.csv', header = 0)
 
 #%%
 IMAGE_TO_DISPLAY = 5
-IMAGE_SIZE = (200,200)
+IMAGE_SIZE = (256,256)
 
 img_vec = df.iloc[IMAGE_TO_DISPLAY,1:]
 img_vec = img_vec.to_numpy(dtype = int)
