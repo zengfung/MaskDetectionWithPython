@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jul 28 16:35:00 2020
+
+@author: Zeng Fung
+
+Code to run Random Forest Classifier in Scikit-Learn
+"""
 PERCENTAGE_OF_TRAIN = 0.8
 
 import pandas as pd

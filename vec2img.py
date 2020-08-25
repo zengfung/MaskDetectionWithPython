@@ -9,19 +9,16 @@ full_mask.csv file
 """
 
 import pandas as pd
-from PIL import Image as pimg
-import numpy as np
+import matplotlib.pyplot as plt
 
-df = pd.read_csv('full_mask.csv', header = 0)
+df = pd.read_csv('mask.csv', header = 0)
 
-#%%
-IMAGE_TO_DISPLAY = 5
-IMAGE_SIZE = (256,256)
+IMAGE_TO_DISPLAY = 7
+IMAGE_SIZE = (128,128,3)
+MODE = 'P'
 
 img_vec = df.iloc[IMAGE_TO_DISPLAY,1:]
 img_vec = img_vec.to_numpy(dtype = int)
-img_mat = img_vec.reshape(IMAGE_SIZE, order = 'F')
-img = pimg.fromarray(img_mat)
-img.show()
-
-
+img_mat = img_vec.reshape(IMAGE_SIZE)
+plt.imshow(img_mat)
+plt.show()

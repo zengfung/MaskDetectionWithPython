@@ -2,18 +2,26 @@
 """
 Created on Tue Jul 28 16:35:00 2020
 
-@author: LZFun
+@author: Zeng Fung
+
+Code to run Feed-Forward Neural Network in Keras
 """
 
 PERCENTAGE_OF_TRAIN = 0.8
 
 import pandas as pd
-import random
-import math
 import numpy as np
-import time
+import data_augmentation
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from sklearn.preprocessing import OneHotEncoder
+from keras import optimizers
+from keras.models import Sequential
+from keras.layers import Dense
+from keras import regularizers #for l1 or l2 regularizers
+from keras.callbacks import EarlyStopping #stop training when monitored argument stops decreasing/increasing
 
-print('Reading file...')
+# Read file and split data into training and test data
 # import mask.csv
 full_data = pd.read_csv('mask.csv', header = 0)
 
@@ -21,129 +29,83 @@ full_data = pd.read_csv('mask.csv', header = 0)
 with_mask = full_data[full_data.with_mask == 'Yes']
 without_mask = full_data[full_data.with_mask == 'No']
 
-# randomly select training data index
-# the amount of training data to be selected depends on the value input into the variable PERCENTAGE_OF_TRAIN
-trainidx_withmask = random.sample(range(len(with_mask)), math.floor(PERCENTAGE_OF_TRAIN * len(with_mask)))
-trainidx_withoutmask = random.sample(range(len(without_mask)), math.floor(PERCENTAGE_OF_TRAIN * len(without_mask)))
+(train_x_withmask, test_x_withmask, train_y_withmask, test_y_withmask) = train_test_split(with_mask.iloc[:,1:], with_mask.iloc[:,0], train_size = 0.8, test_size = 0.2, random_state = 1)
+(train_x_withoutmask, test_x_withoutmask, train_y_withoutmask, test_y_withoutmask) = train_test_split(without_mask.iloc[:,1:], without_mask.iloc[:,0], train_size = 0.8, test_size = 0.2, random_state = 1)
 
-# remaining data will be used as testing data
-testidx_withmask = list(set(list(range(len(with_mask)))) - set(trainidx_withmask))
-testidx_withoutmask = list(set(list(range(len(without_mask)))) - set(trainidx_withoutmask))
+train_x = np.vstack((train_x_withmask, train_x_withoutmask))
+train_y = pd.concat([train_y_withmask, train_y_withoutmask], axis = 0).reset_index(drop = True)
+train_y = np.array(train_y)
 
-# build a data frame of training data
-train_withmask = with_mask.iloc[trainidx_withmask, :]
-train_withoutmask = without_mask.iloc[trainidx_withoutmask, :]
-train_data = pd.concat([train_withmask, train_withoutmask], axis = 0).reset_index(drop = True)
+test_x = np.vstack((test_x_withmask, test_x_withoutmask))
+test_y_true = pd.concat([test_y_withmask, test_y_withoutmask], axis = 0).reset_index(drop = True)
+test_y_true = np.array(test_y_true)
 
-# build a data frame of testing data
-test_withmask = with_mask.iloc[testidx_withmask, :]
-test_withoutmask = without_mask.iloc[testidx_withoutmask, :]
-test_data = pd.concat([test_withmask, test_withoutmask], axis = 0).reset_index(drop = True)
+# delete variables that are no longer needed to allocate memory
+del with_mask
+del without_mask
+del train_x_withmask
+del train_x_withoutmask
+del test_x_withmask
+del test_x_withoutmask
+del train_y_withmask
+del train_y_withoutmask
+del test_y_withmask
+del test_y_withoutmask
 
-# converting the data frame into arrays to be used to run ML algorithms
-train_x = np.array(train_data.iloc[:, 1:])
-train_y = np.array(train_data.iloc[:, 0])
-
-test_x = np.array(test_data.iloc[:, 1:])
-test_y_true = np.array(test_data.iloc[:, 0])
-
-classification_result = {}
-
-#%%
-print("Setting up variables for NN")
+# Setting up variables for neural network training
 (NUM_OF_DATA, INPUT_NODES) = train_x.shape
 OUTPUT_NODES = 2
-LAYER1_NODES = 8000
-LAYER2_NODES = 1000
+LAYER1_NODES = 500
+LAYER2_NODES = 500
+
+EPOCHS = 300
+BATCH_SIZE = 256
+L1 = 0
+L2 = 1e-4
+LEARNING_RATE = 1e-4
+
+# splitting training data into train and validation data sets
+(nn_x_train, nn_x_validation, nn_y_train, nn_y_validation) = train_test_split(train_x, train_y, train_size = 0.8, test_size = 0.2, random_state = 1)
+
+# increase number of training data
+(nn_x_train, nn_y_train) = data_augmentation.increase_data(nn_x_train, nn_y_train, (128,128,3))
 
 # convert test and training y values from 'Yes' or 'No' to [1,0] or [0,1] respectively
-train_y_01 = np.zeros((NUM_OF_DATA,2), dtype = int)
-for i in range(NUM_OF_DATA):
-    if train_y[i] == 'Yes':
-        train_y_01[i][0] = 1
-    else:
-        train_y_01[i][1] = 1
-test_y_01 = np.zeros((len(test_y_true), 2), dtype = int)
-for i in range(len(test_y_true)):
-    if test_y_true[i] == 'Yes':
-        test_y_01[i][0] = 1
-    else:
-        test_y_01[i][1] = 1
-        
-# splitting training data into train and validation data sets
-randomized_index = random.sample(list(range(NUM_OF_DATA)), NUM_OF_DATA)
-training_num = math.ceil(0.8 * len(randomized_index))
+onehot_encoder = OneHotEncoder(sparse=False)
+nn_y_train = nn_y_train.reshape(len(nn_y_train),1)
+nn_y_train = onehot_encoder.fit_transform(nn_y_train)
+nn_y_validation = nn_y_validation.reshape(len(nn_y_validation),1)
+nn_y_validation = onehot_encoder.fit_transform(nn_y_validation)
+test_y_01 = test_y_true.reshape(len(test_y_true),1)
+test_y_01 = onehot_encoder.fit_transform(test_y_01)
 
-nn_x_train = train_x[randomized_index[:training_num], :]
-nn_y_train = train_y_01[randomized_index[:training_num], :]
-nn_x_validation = train_x[randomized_index[training_num:], :]
-nn_y_validation = train_y_01[randomized_index[training_num:], :]
+# Training neural network
 
-TRAINING_COUNT = training_num
-VALIDATION_COUNT = NUM_OF_DATA - TRAINING_COUNT
-
-print("Running NN")
-
-from keras import initializers, optimizers
-from keras.models import Sequential
-from keras.layers import Dense
-from keras import regularizers #for l1 or l2 regularizers
-from keras.layers.core import Dropout #for dropout to improve efficiency and speed
-from keras.callbacks import LearningRateScheduler, EarlyStopping #stop training when monitored argument stops decreasing/increasing
-
-EPOCHS = 30
-BATCH_SIZE = 100
-LAMBDA = 1e-5
-LEARNING_RATE = 1e-5
-weight_initializer = initializers.TruncatedNormal(mean = 0, stddev = 1e-5)
-
-start = time.time()
-model = Sequential([
-    #input to first hidden layer
-    Dense(output_dim = LAYER1_NODES, input_dim = INPUT_NODES,
-          # kernel_initializer = weight_initializer, bias_initializer = 'zeros',
-          activation = 'relu',
-          # kernel_regularizer = regularizers.l2(LAMBDA)
-          ),
-    Dropout(0.25),
-    
-    #first hidden layer to second hidden layer
-    Dense(output_dim = LAYER2_NODES, input_dim = LAYER1_NODES, 
-          # kernel_initializer = weight_initializer, bias_initializer = 'zeros',          
-          activation = 'relu',
-          # kernel_regularizer = regularizers.l2(LAMBDA)
-          ),
-    Dropout(0.25),
-    
-    #second hidden layer to output
-    Dense(output_dim = OUTPUT_NODES, input_dim = LAYER2_NODES, activation = 'softmax'),
-    ])
+model = Sequential()
+# first hidden layer
+model.add(Dense(units = LAYER1_NODES, input_dim = INPUT_NODES,
+                activation = "relu", kernel_regularizer = regularizers.l1_l2(l1 = L1, l2 = L2)))
+# second hidden layer
+model.add(Dense(units = LAYER2_NODES, activation = 'relu',
+          kernel_regularizer = regularizers.l1_l2(l1 = L1, l2 = L2)))
+# output layer
+model.add(Dense(units = OUTPUT_NODES, activation = 'softmax'))
 
 # compile models with the learning rates set
 opt = optimizers.adam(learning_rate = LEARNING_RATE)
 model.compile(loss = 'categorical_crossentropy', optimizer = opt, metrics = ['accuracy'])
 
-model.fit(nn_x_train, nn_y_train, epochs = EPOCHS, batch_size = BATCH_SIZE, 
+history = model.fit(nn_x_train, nn_y_train, epochs = EPOCHS, batch_size = BATCH_SIZE, 
           validation_data = (nn_x_validation, nn_y_validation),
-          # callbacks = [EarlyStopping(monitor='val_loss', patience=5)]
+          callbacks = [EarlyStopping(monitor='val_accuracy', patience=20)]
           ) 
 
 #evaluate model on test set
 _, accuracy = model.evaluate(test_x, test_y_01)
-end = time.time()
-time_taken = end - start
-
 print('Test Data Accuracy:', '{:.3f}'.format(accuracy))
-print('Time taken:', round(time_taken,2), 'seconds')
 
-print('\a')
-
-#%%
-print("Showing results")
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-
-test_y_pred_01 = model.predict(test_x, verbose = 1)
+# classify test data using the model
+test_y_pred_01 = model.predict(test_x, verbose = 0)
 
 test_y_pred = []
 for i in range(len(test_y_pred_01)):
@@ -151,21 +113,7 @@ for i in range(len(test_y_pred_01)):
         test_y_pred.append('Yes')
     else:
         test_y_pred.append('No')
- 
-# plot confusion matrix and record relevant data
-fig, ax = plt.subplots(1,2, figsize = (10,5))
 
-for i, normal in enumerate([None, 'true']):
-    confmat = confusion_matrix(test_y_true, test_y_pred, labels = ['Yes', 'No'], normalize = normal)
-    disp = ConfusionMatrixDisplay(confmat, display_labels = ['Yes', 'No'])
-    disp.plot(ax = ax[i], cmap = plt.cm.Blues)
-    if i == 0:
-        disp.ax_.set_title('Non-normalized Confusion Matrix')
-        classification_result['Neural Network'] = {'Time' : time_taken,
-                                     'True Positive' : confmat[0][0],
-                                     'True Negative' : confmat[1][1],
-                                     'False Positive' : confmat[1][0],
-                                     'False Negative' : confmat[0][1]}
-    else:
-        disp.ax_.set_title('Normalized Confusion Matrix')
-        disp.im_.set_clim(0,1)
+# show confusion matrix 
+confmat = confusion_matrix(test_y_true, test_y_pred, labels = ['Yes', 'No'])
+print(confmat)

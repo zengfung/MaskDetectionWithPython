@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jul 28 16:35:00 2020
+
+@author: Zeng Fung
+
+Code to run Classifier using SVD Properties
+"""
 PERCENTAGE_OF_TRAIN = 0.8
 
 import pandas as pd
@@ -5,6 +13,8 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
 import scipy as sc
+import matplotlib.pyplot as plt
+import time
 
 # import mask.csv
 full_data = pd.read_csv('mask.csv', header = 0)

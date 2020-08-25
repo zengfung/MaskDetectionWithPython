@@ -3,6 +3,8 @@
 Created on Sat Jul 11 21:25:52 2020
 
 @author: Zeng Fung
+
+Code to run Support Vector Machines (SVM) in Scikit-Learn
 """
 
 PERCENTAGE_OF_TRAIN = 0.8
@@ -38,4 +40,3 @@ test_y_pred = np.array(classifier.predict(test_x), dtype = object)
 
 confmat = confusion_matrix(test_y_true, test_y_pred, labels = ['Yes', 'No'])
 print(confmat)
-
